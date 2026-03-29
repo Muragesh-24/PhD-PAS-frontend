@@ -21,16 +21,19 @@ export interface Student {
   specialization: string;
   preference: string;
   gender: string;
+
   disability: string;
-  dob: number;
+  dob: string;
   expected_graduation_year: number;
   iitk_email: string;
+
   personal_email: string;
   phone: string;
   alternate_phone: string;
   whatsapp_number: string;
   program_department_id: number;
   secondary_program_department_id: number;
+  stage_of_phd: string;
   current_cpi: number;
   ug_cpi: number;
   tenth_board: string;

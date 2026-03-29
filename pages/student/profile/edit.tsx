@@ -11,14 +11,19 @@ import {
   TextField,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 
 import Meta from "@components/Meta";
 import studentRequest, { Student } from "@callbacks/student/student";
 import useStore from "@store/store";
-import { Branches, StagesofPhD, func } from "@components/Utils/matrixUtils";
-import { getId } from "@components/Parser/parser";
+import {
+  Branches,
+  StagesofPhD,
+  func,
+  funcDepartmentWise,
+} from "@components/Utils/matrixUtils";
+import { getDepartment, getId, getProgram } from "@components/Parser/parser";
 
 function ProfileEdit() {
   const [StudentData, setStudentData] = useState<Student>({ ID: 0 } as Student);
@@ -29,12 +34,15 @@ function ProfileEdit() {
     setValue,
     getValues,
     formState: { errors },
+    control,
     watch,
   } = useForm<Student>({
     defaultValues: StudentData,
   });
   const watchGender = watch("gender");
   const watchDisability = watch("disability");
+  const watchDepartment = watch("department");
+  const watchStageOfPhd = watch("stage_of_phd");
 
   const [dept, setDept] = useState<any>("");
   // const [deptSec, setDeptSec] = useState<any>("");
@@ -48,16 +56,20 @@ function ProfileEdit() {
         .catch(() => ({ ID: 0 } as Student));
 
       setStudentData(student);
+      console.log(student);
       reset({
         name: student.name,
         iitk_email: student.iitk_email,
         roll_no: student.roll_no,
         specialization: student.specialization,
-        program: student.program,
-        department: student.department,
+        program: getProgram(student.program_department_id),
+        department: getDepartment(student.program_department_id),
+        stage_of_phd: student.stage_of_phd,
         gender: student.gender,
         personal_email: student.personal_email,
-        dob: student.dob,
+        dob: student.dob
+          ? new Date(student.dob).toISOString().split("T")[0]
+          : "",
         phone: student.phone,
         alternate_phone: student.alternate_phone,
         whatsapp_number: student.whatsapp_number,
@@ -83,29 +95,22 @@ function ProfileEdit() {
   }, [token, reset]);
 
   const onSubmit = async (data: Student) => {
-    let program_department_id = getId(
-      getValues("program"),
-      getValues("department")
-    );
+    const dept = getValues("department") as keyof typeof funcDepartmentWise;
 
-    let secondary_program_department_id = getId(
-      getValues("program_2"),
-      getValues("department_2")
-    );
-
-    if (secondary_program_department_id === 200)
-      secondary_program_department_id = 0;
+    const program_department_id =
+      funcDepartmentWise[dept as keyof typeof funcDepartmentWise];
 
     const response = await studentRequest.update(token, {
       ...data,
       program_department_id,
-      secondary_program_department_id,
+      secondary_program_department_id: 0, // explicitly none
     });
 
     if (response) {
-      router.push("/student/profile");
+      router.replace("/student/profile");
     }
   };
+
   return (
     <div>
       <Meta title="Edit Profile - Student Dashboard " />
@@ -232,10 +237,16 @@ function ProfileEdit() {
                     error={!!errors.department}
                   >
                     <Select
+                      value={watchDepartment || ""}
                       {...register("department", {
                         required: "Department is required",
                       })}
-                      onChange={(e) => setDept(e.target.value)}
+                      onChange={(e) => {
+                        setValue("department", e.target.value, {
+                          shouldValidate: true,
+                        });
+                        setDept(e.target.value);
+                      }}
                     >
                       <MenuItem value="" />
                       <MenuItem value="NA">None</MenuItem>
@@ -252,54 +263,25 @@ function ProfileEdit() {
                     )}
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                {/* <Grid item xs={12} sm={6}>
                   <FormControl
                     fullWidth
                     variant="standard"
                     error={!!errors.program}
                   >
-                    <p>Program</p>
-                    {dept !== "" ? (
-                      <Autocomplete
-                        freeSolo
-                        options={Object.keys(
-                          func[dept as keyof typeof func] || []
-                        )}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            {...register("program", {
-                              required: "Program is required",
-                            })}
-                            label="Program"
-                            variant="standard"
-                          />
-                        )}
-                        onChange={(_, value) => {
-                          // Manually set the value when a predefined option is selected
-                          setValue("program", value || "", {
-                            shouldValidate: true,
-                          });
-                        }}
-                        onInputChange={(_, value) => {
-                          // Update the value as the user types
-                          setValue("program", value, { shouldValidate: true });
-                        }}
-                      />
-                    ) : (
+                    <p>Program</p>               
                       <TextField
                         {...register("program", {
                           required: "Program is required",
                         })}
-                        label="Program"
                         variant="standard"
                       />
-                    )}
+                      
                     {errors.program && (
                       <FormHelperText>{errors.program.message}</FormHelperText>
                     )}
                   </FormControl>
-                </Grid>
+                </Grid> */}
 
                 <Grid item xs={12} sm={6}>
                   <p>Stage of PhD</p>
@@ -307,9 +289,16 @@ function ProfileEdit() {
                     fullWidth
                     variant="standard"
                     required
-                    {...register("specialization", {
+                    value={watchStageOfPhd || ""}
+                    {...register("stage_of_phd", {
                       required: "Stage of PhD is required",
                     })}
+                    onChange={(e) => {
+                      setValue("stage_of_phd", e.target.value, {
+                        shouldValidate: true,
+                      });
+                      setDept(e.target.value);
+                    }}
                     // onChange={(e) => {
                     //   setDept(e.target.value as string);
                     // }}
@@ -500,37 +489,27 @@ function ProfileEdit() {
 
                 <Grid item xs={12} sm={6}>
                   <p>10th Board</p>
-                  <Autocomplete
-                    freeSolo
-                    options={["CBSE", "ICSE"]}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        variant="standard"
-                        error={!!errors.tenth_board}
-                        helperText={
-                          errors.tenth_board ? errors.tenth_board.message : ""
-                        }
-                        {...register("tenth_board", {
-                          required: "10th Board is required",
-                          validate: (value) =>
-                            value.trim() !== "" || "10th Board is required",
-                        })}
+                  <Controller
+                    name="tenth_board"
+                    control={control}
+                    rules={{ required: "10th Board is required" }}
+                    render={({ field }) => (
+                      <Autocomplete
+                        freeSolo
+                        options={["CBSE", "ICSE"]}
+                        value={field.value || null}
+                        onChange={(_, value) => field.onChange(value)}
+                        onInputChange={(_, value) => field.onChange(value)}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            variant="standard"
+                            error={!!errors.tenth_board}
+                            helperText={errors.tenth_board?.message}
+                          />
+                        )}
                       />
                     )}
-                    onChange={(_, value) => {
-                      // Update the field value when an option is selected
-                      setValue("tenth_board", value || "", {
-                        shouldValidate: true,
-                      });
-                    }}
-                    inputValue={watch("tenth_board")} // Keep input value in sync with the form state
-                    onInputChange={(_, value) => {
-                      // Update the field value as the user types
-                      setValue("tenth_board", value || "", {
-                        shouldValidate: true,
-                      });
-                    }}
                   />
                 </Grid>
 
@@ -582,39 +561,27 @@ function ProfileEdit() {
 
                 <Grid item xs={12} sm={6}>
                   <p>12th Board</p>
-                  <Autocomplete
-                    freeSolo
-                    options={["CBSE", "ICSE"]}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        variant="standard"
-                        error={!!errors.twelfth_board}
-                        helperText={
-                          errors.twelfth_board
-                            ? errors.twelfth_board.message
-                            : ""
-                        }
-                        {...register("twelfth_board", {
-                          required: "12th Board is required",
-                          validate: (value) =>
-                            value.trim() !== "" || "12th Board is required",
-                        })}
+                  <Controller
+                    name="twelfth_board"
+                    control={control}
+                    rules={{ required: "12th Board is required" }}
+                    render={({ field }) => (
+                      <Autocomplete
+                        freeSolo
+                        options={["CBSE", "ICSE"]}
+                        value={field.value || null}
+                        onChange={(_, value) => field.onChange(value)}
+                        onInputChange={(_, value) => field.onChange(value)}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            variant="standard"
+                            error={!!errors.twelfth_board}
+                            helperText={errors.twelfth_board?.message}
+                          />
+                        )}
                       />
                     )}
-                    onChange={(_, value) => {
-                      // Update the field value when an option is selected
-                      setValue("twelfth_board", value || "", {
-                        shouldValidate: true,
-                      });
-                    }}
-                    inputValue={watch("twelfth_board")} // Keep input value in sync with the form state
-                    onInputChange={(_, value) => {
-                      // Update the field value as the user types
-                      setValue("twelfth_board", value || "", {
-                        shouldValidate: true,
-                      });
-                    }}
                   />
                 </Grid>
 
@@ -666,8 +633,8 @@ function ProfileEdit() {
 
                 <Grid item xs={12} sm={6}>
                   <p>GATE Score</p>
-                  <TextField  
-                    fullWidth 
+                  <TextField
+                    fullWidth
                     type="number"
                     id="gatescore"
                     variant="standard"
@@ -683,10 +650,10 @@ function ProfileEdit() {
                     })}
                   />
                 </Grid>
-         <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6}>
                   <p>Jam Score</p>
-                  <TextField  
-                    fullWidth 
+                  <TextField
+                    fullWidth
                     type="number"
                     id="jamscore"
                     variant="standard"
@@ -702,10 +669,10 @@ function ProfileEdit() {
                     })}
                   />
                 </Grid>
-  
-  <Grid item xs={12} sm={6}>
+
+                <Grid item xs={12} sm={6}>
                   <p>NET Score</p>
-                  <TextField  
+                  <TextField
                     fullWidth
                     type="number"
                     id="netscore"
@@ -722,13 +689,6 @@ function ProfileEdit() {
                     })}
                   />
                 </Grid>
-
-
-
-
-
-
-
 
                 <Grid item xs={12} sm={6}>
                   <p>Current Address</p>
@@ -750,6 +710,7 @@ function ProfileEdit() {
                     }
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <p>Permanent Address</p>
                   <TextField
@@ -770,6 +731,7 @@ function ProfileEdit() {
                     }
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <p>Friend Name</p>
                   <TextField
@@ -780,6 +742,7 @@ function ProfileEdit() {
                     {...register("friend_name")}
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <p>Friend Contact Details</p>
                   <TextField
@@ -799,6 +762,7 @@ function ProfileEdit() {
                     })}
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <p>Disability</p>
                   <FormControl
