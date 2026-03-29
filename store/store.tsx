@@ -20,17 +20,17 @@ interface StateType {
 const useStore = create<StateType>()(
   persist(
     (set, get) => ({
-      role: 0 || get()?.role,
+      role: get()?.role || 0,
       setRole: (role: number) => set({ role }),
-      rcId: 0 || get()?.rcId,
+      rcId:   get()?.rcId || 0,
       setRcId: (rcId: number) => set({ rcId }),
-      rcName: "" || get()?.rcName,
+      rcName:  get()?.rcName || "",
       setRCName: (rcName: string) => set({ rcName }),
-      userID: "" || get()?.userID,
+      userID:  get()?.userID || "",
       setUserID: (userID: string) => set({ userID }),
-      token: "" || get()?.token,
+      token:  get()?.token || "",
       setToken: (token: string) => set({ token }),
-      name: "" || get()?.name,
+      name:  get()?.name || "",
       setName: (name: string) => set({ name }),
     }),
     {
