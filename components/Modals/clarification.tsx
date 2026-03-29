@@ -55,7 +55,7 @@ function Clarification({
           minRows={3}
           variant="standard"
           {...register("message", { required: true })}
-          error={errors.message}
+          error={!!errors.message}
           helperText={errors.message && "Message is required"}
         />
         <TextField
