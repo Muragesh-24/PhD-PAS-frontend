@@ -65,7 +65,7 @@ function Clarification({
           multiline
           minRows={3}
           {...register("poc", { required: true })}
-          error={errors.poc}
+          error={!!errors.poc}
           helperText={errors.poc && "POC Details is required"}
         />
         <Stack direction="row" spacing={2} style={{ justifyContent: "center" }}>

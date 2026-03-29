@@ -109,7 +109,7 @@ function Enrollment() {
               minRows={3}
               defaultValue={question.answer}
               variant="standard"
-              error={errors[name]}
+              error={!!errors[name]}
               helperText={errors[name] && "*Required"}
               {...register(name, {
                 required: question.mandatory,
