@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { Card, Grid, Stack, TextField } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
